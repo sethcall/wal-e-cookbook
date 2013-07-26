@@ -8,19 +8,30 @@ include_recipe "wal_e::common"
 wal_e_config = node["wal_e"]
 
 # set up master db config and initial backup
-pg_data_path = if 'debian' == node['platform_family']
+pg_data_path = if Dependency.is_phlipper?(run_context)
+  node['postgresql']['conf']['data_directory']
+elsif 'debian' == node['platform_family']
   node['postgresql']['config']['data_directory']
 else
   node['postgresql']['dir']
 end
 
+
 backup_push_command = "#{wal_e_config['exe']} backup-push #{pg_data_path}"
 
 Chef::Log.info "update postgresql configuration for wal_archiving"
-node.set['postgresql']['config']["wal_level"] = "archive"
-node.set['postgresql']['config']["archive_mode"] = "on"
-node.set['postgresql']['config']["archive_command"] = "#{wal_e_config['exe']} wal-push %p"
-node.set['postgresql']['config']["archive_timeout"] = 60
+
+if Dependency.is_phlipper?(run_context)
+  node.set['postgresql']['conf']["wal_level"] = "archive"
+  node.set['postgresql']['conf']["archive_mode"] = "on"
+  node.set['postgresql']['conf']["archive_command"] = "#{wal_e_config['exe']} wal-push %p"
+  node.set['postgresql']['conf']["archive_timeout"] = 60
+else
+  node.set['postgresql']['config']["wal_level"] = "archive"
+  node.set['postgresql']['config']["archive_mode"] = "on"
+  node.set['postgresql']['config']["archive_command"] = "#{wal_e_config['exe']} wal-push %p"
+  node.set['postgresql']['config']["archive_timeout"] = 60
+end
 
 Chef::Log.info "setup cron job to do create snap shots"
 cron "wal-e" do
