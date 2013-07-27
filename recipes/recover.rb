@@ -8,7 +8,9 @@ include_recipe "wal_e::common"
 wal_e_config = node["wal_e"]
 recover_config = wal_e_config["recover"]
 
-pg_data_path = if 'debian' == node['platform_family']
+pg_data_path = if Dependency.is_phlipper?(run_context)
+  node['postgresql']['conf']['data_directory']
+elsif 'debian' == node['platform_family']
   node['postgresql']['config']['data_directory']
 else
   node['postgresql']['dir']
